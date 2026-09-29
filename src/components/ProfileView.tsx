@@ -125,7 +125,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               type="text"
               value={localUrl}
               onChange={(e) => setLocalUrl(e.target.value)}
-              placeholder="http://localhost:3002"
+              placeholder="https://tripmate-ai-travel-planner-frontend.onrender.com/"
               className="flex-1 bg-[#f2f3ff] border border-[#bfc7d2]/30 px-3.5 py-2.5 rounded-xl text-xs font-mono text-[#131b2e] focus:outline-none focus:border-[#006194] focus:bg-white"
             />
             <button

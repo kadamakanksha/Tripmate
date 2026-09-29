@@ -92,7 +92,8 @@ export default function App() {
     setIsLoading(true);
     setBackendError(null);
 
-    // Call the Express backend at http://localhost:3002/?trip=<query>
+   
+    //https://tripmate-ai-travel-planner.onrender.com/?trip=<query>
     const result = await generateItineraryFromBackend(formData, backendUrl);
 
     if (result.success && result.itinerary) {

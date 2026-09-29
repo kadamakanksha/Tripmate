@@ -533,7 +533,7 @@ export const ItineraryView: React.FC<ItineraryViewProps> = ({
         <div className="bg-[#131b2e] text-[#f2f3ff] p-4 rounded-2xl font-mono text-xs overflow-x-auto space-y-2 border border-slate-700">
           <div className="flex items-center justify-between border-b border-slate-700 pb-2">
             <span className="font-sans font-bold text-slate-300">
-              Raw Output from Express API (http://localhost:3002)
+              Raw Output from Express API (https://tripmate-ai-travel-planner.onrender.com)
             </span>
             <button
               type="button"

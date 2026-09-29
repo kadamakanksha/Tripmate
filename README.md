@@ -13,7 +13,7 @@ TripMate AI is an intelligent travel itinerary generation platform built with Re
   - Travel style profiles: Solo, Family, Friends, Student.
   - Food & dining filters: Local Street Food, Authentic Cuisine, Vegan / Veg, Fine Dining, Halal, Seafood Lover.
 - **Backend Integration**:
-  - Connects to the Express backend running at `http://localhost:3002/?trip=<query>`.
+  - Connects to the Express backend running at `https://tripmate-ai-travel-planner.onrender.com/?trip=<query>`.
   - Generates natural language queries formatted as `Make a 5 day trip from [From] to [To] with a [Budget] budget for [Style]...`.
   - Zero Gemini API key in frontend—API keys remain protected strictly on the backend.
   - Robust offline & error fallbacks with connection retry and sample curation preview.
@@ -30,7 +30,7 @@ TripMate AI is an intelligent travel itinerary generation platform built with Re
 
 ## 2. Express Backend Setup (Port 3002)
 
-The frontend communicates with your existing local Express backend at `http://localhost:3002`.
+The frontend communicates with your existing local Express backend at `https://tripmate-ai-travel-planner.onrender.com`.
 
 ### Sample Express Backend (`server.js`):
 ```javascript
