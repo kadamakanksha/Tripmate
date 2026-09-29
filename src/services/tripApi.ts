@@ -1,7 +1,7 @@
 import { GeneratedItinerary, TravelFormData, DayPlan, SmartSaverTip, FoodieItem } from '../types/travel';
 import { KYOTO_REFERENCE_ITINERARY, BALI_REFERENCE_ITINERARY, ASSETS } from '../data/mockData';
 
-export const DEFAULT_BACKEND_URL = 'http://localhost:3002';
+export const DEFAULT_BACKEND_URL = 'https://tripmate-ai-travel-planner.onrender.com';
 
 /**
  * Creates natural language trip prompt required by the Express backend API.
