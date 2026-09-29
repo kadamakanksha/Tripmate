@@ -1,7 +1,20 @@
 import { GeneratedItinerary, TravelFormData, DayPlan, SmartSaverTip, FoodieItem } from '../types/travel';
 import { KYOTO_REFERENCE_ITINERARY, BALI_REFERENCE_ITINERARY, ASSETS } from '../data/mockData';
 
-export const DEFAULT_BACKEND_URL = 'https://tripmate-ai-travel-planner.onrender.com';
+// Production backend URL.
+// VITE_API_BASE_URL can override this in local/deployed environments.
+// There is intentionally NO localhost fallback for production.
+export const DEFAULT_BACKEND_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  'https://tripmate-ai-travel-planner.onrender.com';
+
+const REQUEST_TIMEOUT_MS = 45000;
+const RETRY_DELAY_MS = 3000;
+const MAX_RETRIES = 2;
+
+// Prevent two identical Generate Itinerary clicks from creating duplicate
+// backend/Gemini requests at the same time.
+const inFlightRequests = new Map<string, Promise<string>>();
 
 /**
  * Creates natural language trip prompt required by the Express backend API.
@@ -27,30 +40,86 @@ export interface BackendFetchResult {
 }
 
 /**
- * Calls the local Express backend at http://localhost:3002/?trip=<query>
+ * Calls the production Express backend with retry support.
+ *
+ * Render free services can take a little time to wake up after sleeping.
+ * We therefore retry transient network/5xx failures instead of immediately
+ * showing "Failed to fetch".
  */
+async function fetchTripText(targetUrl: string): Promise<string> {
+  const existingRequest = inFlightRequests.get(targetUrl);
+  if (existingRequest) {
+    return existingRequest;
+  }
+
+  const requestPromise = (async () => {
+    let lastError: unknown;
+
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const res = await fetch(targetUrl, {
+          method: 'GET',
+          headers: {
+            Accept: 'text/plain, application/json, */*',
+          },
+          signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        });
+
+        // Retry temporary server errors such as 502/503/504.
+        if (res.status >= 500 && res.status <= 599) {
+          throw new Error(`Backend temporarily unavailable (HTTP ${res.status})`);
+        }
+
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status} ${res.statusText}`);
+        }
+
+        return await res.text();
+      } catch (err: unknown) {
+        lastError = err;
+
+        if (attempt === MAX_RETRIES) {
+          break;
+        }
+
+        console.warn(
+          `TripMate backend attempt ${attempt + 1} failed. Retrying in ${RETRY_DELAY_MS / 1000}s...`,
+          err
+        );
+
+        await new Promise((resolve) =>
+          setTimeout(resolve, RETRY_DELAY_MS)
+        );
+      }
+    }
+
+    if (lastError instanceof Error) {
+      throw lastError;
+    }
+
+    throw new Error('Unable to connect to the TripMate backend.');
+  })();
+
+  inFlightRequests.set(targetUrl, requestPromise);
+
+  try {
+    return await requestPromise;
+  } finally {
+    inFlightRequests.delete(targetUrl);
+  }
+}
+
 export async function generateItineraryFromBackend(
   formData: TravelFormData,
   backendUrl = DEFAULT_BACKEND_URL
 ): Promise<BackendFetchResult> {
   const query = buildTripQuery(formData);
-  const targetUrl = `${backendUrl.replace(/\/+$/, '')}/?trip=${encodeURIComponent(query)}`;
+  const cleanBackendUrl = backendUrl.replace(/\/+$/, '');
+  const targetUrl = `${cleanBackendUrl}/?trip=${encodeURIComponent(query)}`;
   const startTime = performance.now();
 
   try {
-    const res = await fetch(targetUrl, {
-      method: 'GET',
-      headers: {
-        Accept: 'text/plain, application/json, */*',
-      },
-      signal: AbortSignal.timeout(25000),
-    });
-
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status} ${res.statusText}`);
-    }
-
-    const text = await res.text();
+    const text = await fetchTripText(targetUrl);
     const duration = ((performance.now() - startTime) / 1000).toFixed(1) + 's';
 
     // Parse the returned response into structured itinerary
@@ -61,17 +130,20 @@ export async function generateItineraryFromBackend(
       itinerary,
       rawResponse: text,
       querySent: query,
-      backendUrl,
+      backendUrl: cleanBackendUrl,
     };
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : String(err);
-    console.warn(`TripMate Backend [${targetUrl}] unreachable or returned error:`, err);
+    console.warn(
+      `TripMate Backend [${targetUrl}] unreachable or returned error:`,
+      err
+    );
 
     return {
       success: false,
       error: errorMessage,
       querySent: query,
-      backendUrl,
+      backendUrl: cleanBackendUrl,
     };
   }
 }
